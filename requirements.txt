@@ -1,0 +1,11 @@
+# PyTorch con CUDA: instalar primero desde el índice oficial, p. ej.
+#   pip install torch==2.14.1 torchvision==0.29.1 --index-url https://download.pytorch.org/whl/cu126
+# (en Google Colab ya viene instalado)
+torch>=2.4
+torchvision>=0.19
+numpy>=1.26
+pandas>=2.0
+scikit-learn>=1.4
+matplotlib>=3.8
+pillow>=10.0
+ImageHash>=4.3
