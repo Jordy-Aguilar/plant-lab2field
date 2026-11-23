@@ -101,7 +101,21 @@ def dedup(df: pd.DataFrame):
                                         "phash_dupes": n1 - len(df), "label_conflicts": n_conf}
 
 
+def make_subsets(n_train: int = 300, n_val: int = 100):
+    """Protocolo reducido: muestra estratificada de PlantVillage (proyecto acotado).
+    Clases con menos imágenes se toman completas. El test de PlantVillage no se reduce."""
+    for name, n in (("pv_train", n_train), ("pv_val", n_val)):
+        d = pd.read_csv(SPLITS_DIR / f"{name}.csv")
+        s = d.sample(frac=1.0, random_state=SEED).groupby("label").head(n)
+        s.sort_values("path").to_csv(SPLITS_DIR / f"{name}_small.csv", index=False)
+        print(name + "_small", len(s))
+
+
 def main():
+    import sys
+    if "--subsets-only" in sys.argv:
+        make_subsets()
+        return
     SPLITS_DIR.mkdir(parents=True, exist_ok=True)
     classes = [{"id": i, "plantdoc": d, "plantvillage": v, "species": s}
                for i, (d, v, s) in enumerate(CLASS_MAP)]
@@ -151,6 +165,7 @@ def main():
     report["per_class"] = counts
     (SPLITS_DIR / "data_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps({k: v for k, v in report.items() if k != "per_class"}, indent=2))
+    make_subsets()
 
 
 if __name__ == "__main__":

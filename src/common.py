@@ -39,17 +39,23 @@ def set_seed(seed: int) -> None:
 def train_transform(kind: str = "standard") -> T.Compose:
     """Aumento estándar (E1/E2). 'field' queda reservado para E3."""
     ops = [
-        T.RandomResizedCrop(IMG_SIZE, scale=(0.7, 1.0)),
+        T.RandomResizedCrop(IMG_SIZE, scale=(0.3, 1.0) if kind == "field" else (0.7, 1.0)),
         T.RandomHorizontalFlip(),
         T.RandomVerticalFlip(),
     ]
     if kind == "field":
+        # Aumento orientado a campo (E3): iluminación/color, perspectiva, desenfoque y oclusiones,
+        # para que el modelo no dependa del fondo uniforme y la luz controlada del laboratorio.
         ops += [
-            T.ColorJitter(0.4, 0.4, 0.4, 0.05),
-            T.RandomApply([T.GaussianBlur(5, sigma=(0.1, 2.0))], p=0.3),
+            T.RandomApply([T.ColorJitter(0.5, 0.5, 0.5, 0.08)], p=0.8),
+            T.RandomPerspective(distortion_scale=0.3, p=0.3),
+            T.RandomRotation(30),
+            T.RandomApply([T.GaussianBlur(7, sigma=(0.1, 3.0))], p=0.4),
             T.RandomGrayscale(p=0.05),
         ]
     ops += [T.ToTensor(), T.Normalize(IMAGENET_MEAN, IMAGENET_STD)]
+    if kind == "field":
+        ops += [T.RandomErasing(p=0.5, scale=(0.02, 0.15), value="random")]
     return T.Compose(ops)
 
 
@@ -64,8 +70,8 @@ def eval_transform() -> T.Compose:
 class ManifestDataset(Dataset):
     """Lee un CSV con columnas path,label (ruta relativa a DATA_ROOT)."""
 
-    def __init__(self, csv_path: Path, transform):
-        self.df = pd.read_csv(csv_path)
+    def __init__(self, csv_path, transform):
+        self.df = csv_path if isinstance(csv_path, pd.DataFrame) else pd.read_csv(csv_path)
         self.paths = self.df["path"].tolist()
         self.labels = self.df["label"].astype(int).tolist()
         self.transform = transform

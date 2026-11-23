@@ -14,6 +14,7 @@ import json
 import time
 
 import numpy as np
+import pandas as pd
 import torch
 import torch.nn as nn
 from sklearn.metrics import f1_score
@@ -29,6 +30,16 @@ DEFAULTS = {
     "mobilenetv2": (12, 3e-4, 1),
     "efficientnet_b0": (12, 3e-4, 1),
 }
+# Protocolo reducido (--subset): 300 imágenes/clase para entrenar, 100/clase para validar.
+DEFAULTS_SUBSET = {"baseline": (20, 1e-3, 0), "mobilenetv2": (10, 3e-4, 1), "efficientnet_b0": (10, 3e-4, 1)}
+
+
+def field_sample(frac: float, seed: int) -> pd.DataFrame:
+    """Fracción estratificada de PlantDoc-train (E4). Clases con <2 imágenes se toman completas."""
+    d = pd.read_csv(SPLITS_DIR / "pd_train.csv")
+    d = d.sample(frac=1.0, random_state=seed)
+    quota = d.groupby("label")["label"].transform(lambda s: max(1, round(len(s) * frac)))
+    return d[d.groupby("label").cumcount() < quota]
 
 
 @torch.no_grad()
@@ -65,9 +76,11 @@ def main():
     ap.add_argument("--aug", default="standard", choices=["standard", "field"])
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--tag", default="")
+    ap.add_argument("--subset", action="store_true", help="protocolo reducido (300 img/clase)")
+    ap.add_argument("--field-frac", type=float, default=0.0, help="fracción de PlantDoc-train añadida (E4)")
     args = ap.parse_args()
 
-    ep_def, lr_def, head_def = DEFAULTS[args.model]
+    ep_def, lr_def, head_def = (DEFAULTS_SUBSET if args.subset else DEFAULTS)[args.model]
     epochs = args.epochs or ep_def
     lr = args.lr or lr_def
     head_epochs = head_def if args.head_epochs is None else args.head_epochs
@@ -80,9 +93,16 @@ def main():
 
     dl_kw = dict(num_workers=args.workers, pin_memory=True, persistent_workers=args.workers > 0)
     g = torch.Generator().manual_seed(args.seed)
-    train_dl = DataLoader(ManifestDataset(SPLITS_DIR / "pv_train.csv", train_transform(args.aug)),
+    sfx = "_small" if args.subset else ""
+    train_df = pd.read_csv(SPLITS_DIR / f"pv_train{sfx}.csv")
+    n_field = 0
+    if args.field_frac > 0:
+        fd = field_sample(args.field_frac, args.seed)
+        n_field = len(fd)
+        train_df = pd.concat([train_df, fd], ignore_index=True)
+    train_dl = DataLoader(ManifestDataset(train_df, train_transform(args.aug)),
                           batch_size=args.batch_size, shuffle=True, drop_last=True, generator=g, **dl_kw)
-    val_dl = DataLoader(ManifestDataset(SPLITS_DIR / "pv_val.csv", eval_transform()),
+    val_dl = DataLoader(ManifestDataset(SPLITS_DIR / f"pv_val{sfx}.csv", eval_transform()),
                         batch_size=128, **dl_kw)
     pd_dl = DataLoader(ManifestDataset(SPLITS_DIR / "pd_test.csv", eval_transform()),
                        batch_size=128, num_workers=0)
@@ -150,6 +170,8 @@ def main():
 
     out = {
         "run": run, "model": args.model, "seed": args.seed, "aug": args.aug,
+        "subset": args.subset, "field_frac": args.field_frac, "n_train": len(train_df), "n_field": n_field,
+        "amp": USE_AMP,
         "epochs_max": epochs, "epochs_run": len(history), "best_epoch": best_ep,
         "best_val_f1": best_f1, "lr": lr, "head_epochs": head_epochs,
         "batch_size": args.batch_size, "weight_decay": args.weight_decay,
