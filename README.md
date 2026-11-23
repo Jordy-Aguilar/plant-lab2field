@@ -113,7 +113,7 @@ MobileNetV2 ~7 min, EfficientNet-B0 ~12 min.
 ### Google Colab
 
 ```python
-!git clone <URL-de-este-repositorio> plant-lab2field
+!git clone https://github.com/Jordy-Aguilar/plant-lab2field.git plant-lab2field
 %cd plant-lab2field
 !pip install -q ImageHash
 # descargar los datos como en la sección 2, luego:
