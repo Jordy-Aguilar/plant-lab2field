@@ -138,6 +138,6 @@ import os; os.environ["USE_AMP"] = "1"   # la T4 sí soporta fp16 de forma estab
 
 ## Uso de IA generativa
 
-El código y la documentación se desarrollaron con asistencia de Claude (Anthropic). Todos los
-experimentos se ejecutaron realmente y los resultados reportados provienen de los archivos en
-`results/`.
+Se usó Claude (Anthropic) como herramienta de apoyo en la redacción de la documentación y como
+asistente de programación (sugerencia y depuración de código). Los experimentos se ejecutaron en el
+equipo del grupo y los resultados reportados provienen de los archivos en `results/`.
