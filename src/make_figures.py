@@ -28,7 +28,7 @@ CONFIGS = {  # clave: (experimento, etiqueta corta, color)
     "mobilenetv2_sub_field_pd10": ("E4", "E3 + 10 % campo", "#81b29a"),
     "mobilenetv2_sub_field_pd25": ("E4", "E3 + 25 % campo", "#3d9970"),
     "mobilenetv2_sub_field_pd50": ("E4", "E3 + 50 % campo", "#1b5e20"),
-    "mobilenetv2": ("Control", "MobileNetV2 (datos completos)", "#5c0a17"),
+    "mobilenetv2": ("Control", "MobileNetV2 · datos completos", "#5c0a17"),
 }
 FIG = RESULTS_DIR / "figures"
 plt.rcParams.update({"font.family": "Arial", "font.size": 9, "axes.spines.top": False, "axes.spines.right": False})
@@ -110,15 +110,21 @@ def fig_gap(df, cfgs, name, width=4.8):
     d = df.loc[[c for c in cfgs if c in df.index]]
     fig, ax = plt.subplots(figsize=(width, 2.6))
     x = np.arange(len(d))
-    ax.bar(x - 0.2, d.PV_f1_macro, 0.38, yerr=d.PV_f1_macro_sd, capsize=2, color="#d9d9d9", edgecolor="#555",
+    single = d.semillas.max() == 1  # una semilla: barras de error = IC 95 % bootstrap en campo
+    pv_err = None if single else d.PV_f1_macro_sd
+    pd_err = (np.vstack([d.PD_f1_macro - d.PD_f1_ci_lo, d.PD_f1_ci_hi - d.PD_f1_macro]) if single
+              else d.PD_f1_macro_sd)
+    ax.bar(x - 0.2, d.PV_f1_macro, 0.38, yerr=pv_err, capsize=2, color="#d9d9d9", edgecolor="#555",
            label="Laboratorio (PlantVillage-test)")
-    ax.bar(x + 0.2, d.PD_f1_macro, 0.38, yerr=d.PD_f1_macro_sd, capsize=2, color="#C8102E",
-           label="Campo (PlantDoc-test)")
+    ax.bar(x + 0.2, d.PD_f1_macro, 0.38, yerr=pd_err, capsize=3, color="#C8102E",
+           label="Campo (PlantDoc-test" + (", IC 95 %)" if single else ")"))
     for i, (_, r) in enumerate(d.iterrows()):
-        ax.text(i - 0.2, r.PV_f1_macro + r.PV_f1_macro_sd + 0.015, f"{r.PV_f1_macro:.3f}", ha="center", fontsize=6.5)
-        ax.text(i + 0.2, r.PD_f1_macro + r.PD_f1_macro_sd + 0.015, f"{r.PD_f1_macro:.3f}", ha="center", fontsize=6.5)
-    ax.set_xticks(x, [CONFIGS[c][1].replace(" + ", "\n+ ") for c in d.index], fontsize=7)
-    ax.set(ylabel="F1-macro (media ± d.e.)", ylim=(0, 1.15))
+        top_pd = r.PD_f1_ci_hi if single else r.PD_f1_macro + r.PD_f1_macro_sd
+        top_pv = r.PV_f1_macro + (0 if single else r.PV_f1_macro_sd)
+        ax.text(i - 0.2, top_pv + 0.015, f"{r.PV_f1_macro:.3f}", ha="center", fontsize=6.5)
+        ax.text(i + 0.2, top_pd + 0.015, f"{r.PD_f1_macro:.3f}", ha="center", fontsize=6.5)
+    ax.set_xticks(x, [CONFIGS[c][1].replace(" + ", "\n+ ").replace(" · ", "\n") for c in d.index], fontsize=7)
+    ax.set(ylabel="F1-macro" if single else "F1-macro (media ± d.e.)", ylim=(0, 1.15))
     ax.legend(fontsize=7, frameon=False, loc="upper center", ncol=2, bbox_to_anchor=(0.5, 1.13))
     plt.tight_layout()
     plt.savefig(FIG / name, dpi=220)
@@ -222,15 +228,17 @@ def main():
     fig_distribution(classes)
     e12 = ["baseline_sub", "mobilenetv2_sub", "efficientnet_b0_sub"]
     fig_curves(runs, e12, "curves_e1e2.png")
-    fig_gap(df, e12, "gap_e1e2.png")
+    fig_gap(df, e12 + ["mobilenetv2"], "gap_e1e2.png", width=5.6)
     if all(c in evals for c in e12):
         fig_perclass(evals, classes, e12, "perclass_e1e2.png")
-    allc = [c for c in CONFIGS if c != "mobilenetv2"]
-    fig_gap(df, allc, "gap_all.png", width=7.2)
-    fig_field_fraction(df)
-    fig_curves(runs, ["mobilenetv2_sub", "mobilenetv2_sub_field", "mobilenetv2_sub_field_pd50"], "curves_e3e4.png")
+    if "mobilenetv2_sub_field" in evals:  # figuras de E3/E4 (Entregable 3)
+        allc = [c for c in CONFIGS if c != "mobilenetv2"]
+        fig_gap(df, allc, "gap_all.png", width=7.2)
+        fig_field_fraction(df)
+        fig_curves(runs, ["mobilenetv2_sub", "mobilenetv2_sub_field", "mobilenetv2_sub_field_pd50"], "curves_e3e4.png")
     best = df.loc[[c for c in df.index if c != "mobilenetv2"], "PD_f1_macro"].idxmax()
-    fig_confusion(evals, classes, best, "confusion_best.png")
+    if CONFIGS[best][0] in ("E3", "E4"):
+        fig_confusion(evals, classes, best, "confusion_best.png")
     if "mobilenetv2_sub" in evals:
         fig_confusion(evals, classes, "mobilenetv2_sub", "confusion_e2.png")
     pd.set_option("display.width", 250)

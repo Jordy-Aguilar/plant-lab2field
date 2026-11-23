@@ -35,7 +35,7 @@ def cam_for(model, layer, x, target=None):
     cam = F.relu((w * acts["a"]).sum(1, keepdim=True))
     cam = F.interpolate(cam, size=(IMG_SIZE, IMG_SIZE), mode="bilinear", align_corners=False)[0, 0]
     cam = (cam - cam.min()) / (cam.max() - cam.min() + 1e-8)
-    return cam.detach().cpu().numpy(), pred, float(out.softmax(1)[0, pred])
+    return cam.detach().cpu().numpy(), pred, float(out.detach().softmax(1)[0, pred])
 
 
 def main():
@@ -46,7 +46,7 @@ def main():
     args = ap.parse_args()
 
     classes = json.loads((SPLITS_DIR / "classes.json").read_text(encoding="utf-8"))
-    short = [c["plantdoc"] for c in classes]
+    short = [c["plantdoc"].replace(" leaf", "").replace(" Leaf", "") for c in classes]
     rng = np.random.default_rng(args.seed)
     pv = pd.read_csv(SPLITS_DIR / "pv_test.csv")
     pdt = pd.read_csv(SPLITS_DIR / "pd_test.csv")
@@ -64,23 +64,30 @@ def main():
         models.append((ck["model"], m, gradcam_layer(m, ck["model"])))
 
     tf = eval_transform()
-    fig, axes = plt.subplots(len(samples), len(models) + 1, figsize=(2.2 * (len(models) + 1), 2.2 * len(samples)))
-    for r, (dom, row) in enumerate(samples):
+    # Filas: imagen original + un modelo por fila. Columnas: muestras (laboratorio y campo).
+    nr, nc = len(models) + 1, len(samples)
+    fig, axes = plt.subplots(nr, nc, figsize=(1.25 * nc, 1.5 * nr))
+    for c, (dom, row) in enumerate(samples):
         img = Image.open(DATA_ROOT / row.path).convert("RGB")
         x = tf(img).unsqueeze(0).requires_grad_(True)
         base = np.asarray(img.resize((IMG_SIZE, IMG_SIZE))) / 255.0
-        axes[r, 0].imshow(base)
-        axes[r, 0].set_title(f"{dom}\n{short[row.label]}", fontsize=7)
-        for c, (name, m, layer) in enumerate(models, start=1):
+        axes[0, c].imshow(base)
+        axes[0, c].set_title(f"{dom}\n{short[row.label]}", fontsize=6)
+        for r, (name, m, layer) in enumerate(models, start=1):
             cam, pred, conf = cam_for(m, layer, x)
             axes[r, c].imshow(base)
             axes[r, c].imshow(cam, cmap="jet", alpha=0.45)
-            ok = "✓" if pred == row.label else "✗"
-            axes[r, c].set_title(f"{LABELS[name]} {ok}\n{short[pred]} ({conf:.0%})", fontsize=7,
-                                 color="green" if pred == row.label else "red")
+            ok = pred == row.label
+            axes[r, c].set_title(f"{'✓' if ok else '✗'} {short[pred]} ({conf:.0%})", fontsize=5.2,
+                                 color="green" if ok else "red")
+    for r, (name, _, _) in enumerate(models, start=1):
+        axes[r, 0].text(-0.08, 0.5, LABELS[name], transform=axes[r, 0].transAxes, rotation=90,
+                        va="center", ha="right", fontsize=7, fontweight="bold")
     for a in axes.ravel():
-        a.axis("off")
-    plt.tight_layout()
+        a.set_xticks([]); a.set_yticks([])
+        for sp in a.spines.values():
+            sp.set_visible(False)
+    plt.tight_layout(pad=0.3, h_pad=0.9)
     out = RESULTS_DIR / "figures"
     out.mkdir(parents=True, exist_ok=True)
     plt.savefig(out / "gradcam.png", dpi=200)

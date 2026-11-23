@@ -1,0 +1,25 @@
+Downloading: "https://download.pytorch.org/models/efficientnet_b0_rwightman-7f5810bc.pth" to C:\Users\jrdy0/.cache\torch\hub\checkpoints\efficientnet_b0_rwightman-7f5810bc.pth
+  0%|          | 0.00/20.5M [00:00<?, ?B/s]  1%|          | 128k/20.5M [00:00<00:25, 833kB/s]  2%|1         | 384k/20.5M [00:00<00:13, 1.54MB/s]  7%|6         | 1.38M/20.5M [00:00<00:04, 4.89MB/s] 15%|#5        | 3.12M/20.5M [00:00<00:01, 9.41MB/s] 48%|####7     | 9.75M/20.5M [00:00<00:00, 29.1MB/s] 68%|######7   | 13.9M/20.5M [00:00<00:00, 31.8MB/s] 99%|#########9| 20.2M/20.5M [00:00<00:00, 37.6MB/s]100%|##########| 20.5M/20.5M [00:00<00:00, 25.2MB/s]
+{"epoch": 1, "stage": "head", "train_loss": 1.8949, "train_acc": 0.6756, "val_loss": 1.1674, "val_acc": 0.8352, "val_f1": 0.8368, "pd_loss": 2.7964, "pd_acc": 0.2203, "pd_f1": 0.1966, "epoch_time_s": 27.8132}
+{"epoch": 2, "stage": "full", "train_loss": 0.6135, "train_acc": 0.8991, "val_loss": 0.1403, "val_acc": 0.9622, "val_f1": 0.9642, "pd_loss": 2.675, "pd_acc": 0.2712, "pd_f1": 0.22, "epoch_time_s": 63.0806}
+{"epoch": 3, "stage": "full", "train_loss": 0.0954, "train_acc": 0.9747, "val_loss": 0.0709, "val_acc": 0.9785, "val_f1": 0.9797, "pd_loss": 3.0068, "pd_acc": 0.2669, "pd_f1": 0.2205, "epoch_time_s": 59.2655}
+{"epoch": 4, "stage": "full", "train_loss": 0.0505, "train_acc": 0.9849, "val_loss": 0.0588, "val_acc": 0.9801, "val_f1": 0.9813, "pd_loss": 3.2796, "pd_acc": 0.2585, "pd_f1": 0.2194, "epoch_time_s": 59.6004}
+{"epoch": 5, "stage": "full", "train_loss": 0.0302, "train_acc": 0.9922, "val_loss": 0.0579, "val_acc": 0.9821, "val_f1": 0.982, "pd_loss": 3.5836, "pd_acc": 0.2797, "pd_f1": 0.2182, "epoch_time_s": 59.7453}
+{"epoch": 6, "stage": "full", "train_loss": 0.0256, "train_acc": 0.9929, "val_loss": 0.0379, "val_acc": 0.9865, "val_f1": 0.9869, "pd_loss": 3.8077, "pd_acc": 0.2542, "pd_f1": 0.2178, "epoch_time_s": 59.7817}
+{"epoch": 7, "stage": "full", "train_loss": 0.0181, "train_acc": 0.9946, "val_loss": 0.0365, "val_acc": 0.9877, "val_f1": 0.9882, "pd_loss": 3.9644, "pd_acc": 0.2585, "pd_f1": 0.219, "epoch_time_s": 59.83}
+{"epoch": 8, "stage": "full", "train_loss": 0.0125, "train_acc": 0.9968, "val_loss": 0.0365, "val_acc": 0.9896, "val_f1": 0.9899, "pd_loss": 3.856, "pd_acc": 0.2458, "pd_f1": 0.2015, "epoch_time_s": 59.7972}
+{"epoch": 9, "stage": "full", "train_loss": 0.0101, "train_acc": 0.9979, "val_loss": 0.0345, "val_acc": 0.9893, "val_f1": 0.9896, "pd_loss": 3.8742, "pd_acc": 0.2458, "pd_f1": 0.199, "epoch_time_s": 59.7914}
+{"epoch": 10, "stage": "full", "train_loss": 0.0086, "train_acc": 0.9984, "val_loss": 0.0336, "val_acc": 0.99, "val_f1": 0.9903, "pd_loss": 3.8164, "pd_acc": 0.2754, "pd_f1": 0.2242, "epoch_time_s": 59.7649}
+Listo: efficientnet_b0_s42_sub | mejor F1 val = 0.9903 (época 10)
+{
+  "run": "efficientnet_b0_s42_sub",
+  "gap_f1": 0.7695511696544314,
+  "efficiency": {
+    "params_m": 4.043416,
+    "size_mb_fp32": 16.34212,
+    "cpu_ms_per_img": 13.022299999647657
+  }
+}
+pv_test  n= 5779 acc=0.9948 F1=0.9938
+pd_test  n=  236 acc=0.2754 F1=0.2242
+pd_all   n= 2498 acc=0.2094 F1=0.1627

@@ -12,8 +12,23 @@ evaluarlos con fotos reales de **campo** (PlantDoc), comparando una CNN entrenad
 |---|---|---|
 | E1 | CNN base (4 bloques) desde cero, evaluada en ambos dominios | ✅ Entregable 2 |
 | E2 | MobileNetV2 y EfficientNet-B0 preentrenadas (ImageNet), ajuste fino por etapas | ✅ Entregable 2 |
-| E3 | E2 + aumento de datos orientado a campo (`--aug field`) | ⏳ semanas 11–12 |
-| E4 | E2/E3 + {10, 25, 50} % de imágenes de PlantDoc en el entrenamiento | ⏳ semanas 11–12 |
+| E3 | MobileNetV2 + aumento de datos orientado a campo (`--aug field`) | ⏳ implementado, Entregable 3 |
+| E4 | E3 + {10, 25, 50} % de imágenes de PlantDoc en el entrenamiento (`--field-frac`) | ⏳ implementado, Entregable 3 |
+
+## Resultados preliminares (Entregable 2, semilla 42)
+
+Protocolo reducido: 300 imágenes/clase de PlantVillage para entrenar (8 162), evaluación con
+PlantVillage-test completo (5 779) y PlantDoc-test (236). IC 95 % por *bootstrap*.
+
+| Modelo | F1 laboratorio | F1 campo [IC 95 %] | Brecha Δ | CPU ms/img |
+|---|---|---|---|---|
+| CNN base (E1) | 0,976 | 0,084 [0,050–0,117] | 0,892 | 16,7 |
+| MobileNetV2 (E2) | 0,991 | **0,260** [0,204–0,300] | **0,730** | **9,1** |
+| EfficientNet-B0 (E2) | 0,994 | 0,224 [0,170–0,261] | 0,770 | 13,0 |
+| MobileNetV2, datos completos (control) | 0,997 | 0,222 [0,167–0,264] | 0,776 | 9,0 |
+
+Todas las cifras salen de `results/eval/*.json` y `results/summary.csv`; las figuras están en
+`results/figures/`.
 
 ## Estructura
 
@@ -26,10 +41,13 @@ plant-lab2field/
 │   ├── train.py          entrenamiento (AdamW + OneCycle, early stopping por F1-macro de validación)
 │   ├── evaluate.py       exactitud, F1-macro, IC 95 % bootstrap, F1 por clase, eficiencia en CPU
 │   ├── gradcam.py        mapas Grad-CAM laboratorio vs. campo
-│   └── make_figures.py   tabla resumen y figuras del informe
+│   ├── make_figures.py   tabla resumen y figuras del informe
+│   └── analysis.py       análisis de errores (exactitud por especie, clases sumidero)
 ├── scripts/
 │   ├── extract_plantdoc.py   extrae PlantDoc en Windows (nombres de archivo inválidos en NTFS)
-│   └── run_preliminary.sh    reproduce todos los resultados del Entregable 2
+│   ├── run_preliminary.sh    reproduce exactamente los resultados del Entregable 2
+│   ├── run_all.sh            E1–E4 con 3 semillas (Entregable 3; omite corridas ya hechas)
+│   └── stop_queue.ps1        detiene la cola y sus procesos hijos en Windows
 ├── splits/               particiones exactas usadas (CSV) + clases + reporte de datos
 └── results/              métricas (JSON/CSV), registros de entrenamiento y figuras
 ```
@@ -72,18 +90,25 @@ Versiones usadas: PlantVillage commit `7f7ecc7`, PlantDoc commit `5467f60`.
 ## 3. Ejecución
 
 ```bash
-python src/prepare_data.py                         # particiones en splits/ (ya incluidas)
-python src/train.py --model baseline --seed 42     # E1
-python src/train.py --model mobilenetv2 --seed 42  # E2
-python src/train.py --model efficientnet_b0 --seed 42
-python src/evaluate.py --run mobilenetv2_s42       # repetir para cada corrida
+python src/prepare_data.py                                       # particiones en splits/ (ya incluidas)
+python src/train.py --model baseline --seed 42 --subset --tag sub         # E1
+python src/train.py --model mobilenetv2 --seed 42 --subset --tag sub      # E2
+python src/train.py --model efficientnet_b0 --seed 42 --subset --tag sub  # E2
+python src/evaluate.py --run mobilenetv2_s42_sub                 # repetir para cada corrida
 python src/make_figures.py
-python src/gradcam.py --runs baseline_s42 mobilenetv2_s42 efficientnet_b0_s42
+python src/gradcam.py --runs baseline_s42_sub mobilenetv2_s42_sub efficientnet_b0_s42_sub
+python src/analysis.py
 ```
 
-O todo junto: `bash scripts/run_preliminary.sh 42` (acepta varias semillas: `42 43 44`).
+Todo el Entregable 2 de una vez: `PY=python bash scripts/run_preliminary.sh`.
+E3 y E4 (Entregable 3): `bash scripts/run_all.sh 42 43 44`.
 
+Opciones de `train.py`: `--subset` (300 img/clase), `--aug field` (aumento orientado a campo, E3),
+`--field-frac 0.25` (añade 25 % de PlantDoc-train, E4), `--epochs`, `--lr`, `--batch-size`.
 Los checkpoints se guardan en `../checkpoints/` (variable `CKPT_DIR`), fuera del repositorio.
+
+Tiempos de referencia en una GTX 1660 SUPER (FP32, protocolo reducido): CNN base ~33 min,
+MobileNetV2 ~7 min, EfficientNet-B0 ~12 min.
 
 ### Google Colab
 
@@ -93,7 +118,7 @@ Los checkpoints se guardan en `../checkpoints/` (variable `CKPT_DIR`), fuera del
 !pip install -q ImageHash
 # descargar los datos como en la sección 2, luego:
 import os; os.environ["USE_AMP"] = "1"   # la T4 sí soporta fp16 de forma estable
-!python src/prepare_data.py && python src/train.py --model mobilenetv2 --seed 42
+!python src/prepare_data.py && python src/train.py --model mobilenetv2 --seed 42 --subset --tag sub
 ```
 
 ## 4. Notas de reproducibilidad
